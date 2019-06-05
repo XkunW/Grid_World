@@ -1,3 +1,6 @@
+"""
+This file contains all the functions related to the grid world game
+"""
 import numpy as np
 
 
