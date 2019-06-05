@@ -1,3 +1,7 @@
+"""
+This file uses the grid world functions to train a Q-learning agent to play the game. 
+The Q function is built as a neural network based on the keras Sequential API running on TensorFlow
+"""
 import gridworld as g
 import numpy as np
 import random
