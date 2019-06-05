@@ -173,13 +173,12 @@ if __name__ == "__main__":
         training_hard(model, n)
         print("Model was trained for {} epochs in total".format(count*1000))
         input("Press Enter to test model...")
-        test_training(1)
-        input("Press Enter to test again...")
-        test_training(1)
-        input("Press Enter to test again...")
-        test_training(1)
-        input("Press Enter to test again...")
-        test_training(1)
+        while True:
+            test_training(1)
+            response = input("Press Enter to test model or Q to "
+                             "finish testing...")
+            if response.lower() == 'q':
+                break
         response = input("Press Q to abort or else to continue training: ")
         if response.lower() == 'q':
             break
