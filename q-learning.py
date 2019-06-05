@@ -79,12 +79,11 @@ def training_hard(model, n):
     h = 0
     for i in range(epochs):
 
-        state = g.init_grid_player()  # using the harder state initialization function
+        state = g.init_grid_rand()  # using the harder state initialization function
         status = 1
         # while game still in progress
         while status == 1:
-            # We are in state S
-            # Let's run our Q function on S to get Q values for all possible actions
+            # In state S, run Q function on S to get Q values for all possible actions
             q_value = model.predict(state.reshape(1, 60), batch_size=1)
             if random.random() < epsilon:  # choose random action
                 action = np.random.randint(0, 4)
@@ -178,7 +177,7 @@ if __name__ == "__main__":
         print("Model was trained for {} epochs in total".format(count*1000))
         input("Press Enter to test model...")
         while True:
-            test_training(1)
+            test_training(2)
             response = input("Press Enter to test model or Q to "
                              "finish testing...")
             if response.lower() == 'q':
