@@ -79,7 +79,7 @@ def training_hard(model, n):
     h = 0
     for i in range(epochs):
 
-        state = g.init_grid_rand()  # using the harder state initialization function
+        state = g.init_grid_dynamic_size()  # using the harder state initialization function
         status = 1
         # while game still in progress
         while status == 1:
@@ -143,6 +143,8 @@ def test_training(init=0):
         state = g.init_grid_player()
     elif init == 2:
         state = g.init_grid_rand()
+    elif init == 3:
+        state = g.init_grid_dynamic_size()
 
     print("Initial State:")
     print(g.display_grid(state))
@@ -177,7 +179,7 @@ if __name__ == "__main__":
         print("Model was trained for {} epochs in total".format(count*1000))
         input("Press Enter to test model...")
         while True:
-            test_training(2)
+            test_training(3)
             response = input("Press Enter to test model or Q to "
                              "finish testing...")
             if response.lower() == 'q':

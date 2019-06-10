@@ -72,7 +72,7 @@ def init_grid_rand():
 
 # Initialize grid so that the grid is of size n * 5, where n is a arbitrary positive integer. The walls
 def init_grid_dynamic_size():
-    height = 6
+    height = 3
     state = np.zeros((height, 5, 4))
 
     # place player
@@ -157,7 +157,7 @@ def get_reward(state):
     reward = find_location(state, 0)
     if player_loc == pit:
         return -10
-    elif player_loc == reward:
+    elif player_loc in reward:
         return 10
     else:
         return -1
