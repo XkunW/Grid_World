@@ -107,20 +107,19 @@ def make_move(state, action):
     # need to locate player in grid
     # need to determine what object (if any) is in the new grid spot the player is moving to
     height = len(state)
-    print(1)
+
     player_loc = find_location(state, 3)
     wall = find_location(state, 2)
     reward = find_location(state, 0)
     pit = find_location(state, 1)
     state = np.zeros((height, 5, 4))
-    print(2)
     actions = [[-1, 0], [1, 0], [0, -1], [0, 1]]
     # e.g. up => (player row - 1, player column + 0)
     new_loc = (player_loc[0] + actions[action][0], player_loc[1] + actions[action][1])
     if new_loc not in wall:
         if (np.array(new_loc) <= (height - 1, 4)).all() and (np.array(new_loc) >= (0, 0)).all():
             state[new_loc][3] = 1
-    print(3)
+
     new_player_loc = find_location(state, 3)
     if not new_player_loc:
         state[player_loc] = np.array([0, 0, 0, 1])
@@ -132,7 +131,7 @@ def make_move(state, action):
     # re-place reward
     for r in reward:
         state[r][0] = 1
-    print(4)
+
     return state
 
 
