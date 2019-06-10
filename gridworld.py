@@ -4,8 +4,8 @@ This file contains all the functions related to the grid world game
 import numpy as np
 
 
-def rand_pair(s, e):
-    return np.random.randint(s, e), np.random.randint(s, e)
+def rand_pair(h, w):
+    return np.random.randint(0, h), np.random.randint(0, w)
 
 
 # Initialize stationary grid, all items are placed deterministically
@@ -17,27 +17,27 @@ def init_grid():
     state[2, 2] = np.array([0, 0, 1, 0])
     # place pit
     state[1, 1] = np.array([0, 1, 0, 0])
-    # place goal
+    # place reward
     state[2, 3] = np.array([1, 0, 0, 0])
 
     return state
 
 
-# Initialize player in random location, but keep wall, goal and pit stationary
+# Initialize player in random location, but keep wall, reward and pit stationary
 def init_grid_player():
     state = np.zeros((3, 5, 4))
     # place player
-    state[np.random.randint(0, 3), np.random.randint(0, 5)] = np.array([0, 0, 0, 1])
+    state[rand_pair(3, 5)] = np.array([0, 0, 0, 1])
     # place wall
     state[2, 2] = np.array([0, 0, 1, 0])
     # place pit
     state[1, 1] = np.array([0, 1, 0, 0])
-    # place goal
+    # place reward
     state[1, 2] = np.array([1, 0, 0, 0])
 
     a = find_location(state, 3)  # find grid position of player (agent)
     w = find_location(state, 2)  # find wall
-    g = find_location(state, 0)  # find goal
+    g = find_location(state, 0)  # find reward
     p = find_location(state, 1)  # find pit
     if not a or not w or not g or not p:
         # print('Invalid grid. Rebuilding..')
@@ -46,21 +46,21 @@ def init_grid_player():
     return state
 
 
-# Initialize grid so that goal, pit, wall, player are all randomly placed
+# Initialize grid so that reward, pit, wall, player are all randomly placed
 def init_grid_rand():
     state = np.zeros((3, 5, 4))
     # place player
-    state[np.random.randint(0, 3), np.random.randint(0, 5)] = np.array([0, 0, 0, 1])
+    state[rand_pair(3, 5)] = np.array([0, 0, 0, 1])
     # place wall
-    state[np.random.randint(0, 3), np.random.randint(0, 5)] = np.array([0, 0, 1, 0])
+    state[rand_pair(3, 5)] = np.array([0, 0, 1, 0])
     # place pit
-    state[np.random.randint(0, 3), np.random.randint(0, 5)] = np.array([0, 1, 0, 0])
-    # place goal
-    state[np.random.randint(0, 3), np.random.randint(0, 5)] = np.array([1, 0, 0, 0])
+    state[rand_pair(3, 5)] = np.array([0, 1, 0, 0])
+    # place reward
+    state[rand_pair(3, 5)] = np.array([1, 0, 0, 0])
 
     a = find_location(state, 3)  # find grid position of player (agent)
     w = find_location(state, 2)  # find wall
-    g = find_location(state, 0)  # find goal
+    g = find_location(state, 0)  # find reward
     p = find_location(state, 1)  # find pit
     # If any of the "objects" are superimposed, just call the function again to re-place
     if not a or not w or not g or not p:
@@ -70,73 +70,122 @@ def init_grid_rand():
     return state
 
 
+# Initialize grid so that the grid is of size n * 5, where n is a arbitrary positive integer. The walls
+def init_grid_dynamic_size():
+    height = 6
+    state = np.zeros((height, 5, 4))
+
+    # place player
+    state[height - 1, 4] = np.array([0, 0, 0, 1])
+    # place walls
+    for i in range(1, height - 1):
+        state[i, 2] = np.array([0, 0, 1, 0])
+    # place pit
+    state[height - 1, 2] = np.array([0, 1, 0, 0])
+    # place fixed reward
+    state[0, 0] = np.array([1, 0, 0, 0])
+    # place random rewards
+    place_rand_reward(state)
+    place_rand_reward(state)
+
+    return state
+
+
+def place_rand_reward(state):
+    height = len(state)
+    a = find_location(state, 3)  # find grid position of player (agent)
+    w = find_location(state, 2)  # find wall
+    g = find_location(state, 0)  # find reward
+    p = find_location(state, 1)  # find pit
+    pair = rand_pair(height, 5)
+    while pair == a or pair == p or pair in w or pair in g:
+        pair = rand_pair(height, 5)
+    state[pair[0], pair[1]] = np.array([1, 0, 0, 0])
+
+
 def make_move(state, action):
     # need to locate player in grid
     # need to determine what object (if any) is in the new grid spot the player is moving to
+    height = len(state)
+    print(1)
     player_loc = find_location(state, 3)
     wall = find_location(state, 2)
-    goal = find_location(state, 0)
+    reward = find_location(state, 0)
     pit = find_location(state, 1)
-    state = np.zeros((3, 5, 4))
-
+    state = np.zeros((height, 5, 4))
+    print(2)
     actions = [[-1, 0], [1, 0], [0, -1], [0, 1]]
     # e.g. up => (player row - 1, player column + 0)
     new_loc = (player_loc[0] + actions[action][0], player_loc[1] + actions[action][1])
-    if new_loc != wall:
-        if (np.array(new_loc) <= (2, 4)).all() and (np.array(new_loc) >= (0, 0)).all():
+    if new_loc not in wall:
+        if (np.array(new_loc) <= (height - 1, 4)).all() and (np.array(new_loc) >= (0, 0)).all():
             state[new_loc][3] = 1
-
+    print(3)
     new_player_loc = find_location(state, 3)
     if not new_player_loc:
         state[player_loc] = np.array([0, 0, 0, 1])
     # re-place pit
     state[pit][1] = 1
     # re-place wall
-    state[wall][2] = 1
-    # re-place goal
-    state[goal][0] = 1
-
+    for w in wall:
+        state[w][2] = 1
+    # re-place reward
+    for r in reward:
+        state[r][0] = 1
+    print(4)
     return state
 
 
 def find_location(state, level):
-    for i in range(0, 3):
-        for j in range(0, 5):
-            if state[i, j][level] == 1:
-                return i, j
+    height = len(state)
+    if level == 0 or level == 2:
+        object_list = []
+        for i in range(0, height):
+            for j in range(0, 5):
+                if state[i, j][level] == 1:
+                    object_list.append((i, j))
+        return object_list
+    else:
+        for i in range(0, height):
+            for j in range(0, 5):
+                if state[i, j][level] == 1:
+                    return i, j
 
 
 def get_reward(state):
     player_loc = find_location(state, 3)
     pit = find_location(state, 1)
-    goal = find_location(state, 0)
+    reward = find_location(state, 0)
     if player_loc == pit:
         return -10
-    elif player_loc == goal:
+    elif player_loc == reward:
         return 10
     else:
         return -1
 
 
 def display_grid(state):
-    grid = np.zeros((3, 5), dtype=str)
+    height = len(state)
+    grid = np.zeros((height, 5), dtype=str)
     player_loc = find_location(state, 3)
     wall = find_location(state, 2)
-    goal = find_location(state, 0)
+    reward = find_location(state, 0)
     pit = find_location(state, 1)
-    for i in range(0, 3):
+    for i in range(0, height):
         for j in range(0, 5):
             grid[i, j] = ' '
 
     if player_loc:
         grid[player_loc] = 'P'  # player
-    if wall:
-        grid[wall] = 'W'  # wall
-    if goal:
-        if player_loc != goal:
-            grid[goal] = '+'  # goal
-        else:
-            grid[goal] = 'V'  # Win!
+    for w in wall:
+        if w:
+            grid[w] = 'W'  # wall
+    for r in reward:
+        if r:
+            if player_loc != r:
+                grid[r] = '+'  # reward
+            else:
+                grid[r] = 'V'  # Win!
     if pit:
         if player_loc != pit:
             grid[pit] = '-'  # pit
