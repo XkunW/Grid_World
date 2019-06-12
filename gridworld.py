@@ -2,6 +2,7 @@
 This file contains all the functions related to the grid world game
 """
 import numpy as np
+from scipy.stats import bernoulli
 
 
 def rand_pair(h, w):
@@ -71,8 +72,7 @@ def init_grid_rand():
 
 
 # Initialize grid so that the grid is of size n * 5, where n is a arbitrary positive integer. The walls
-def init_grid_dynamic_size():
-    height = 3
+def init_grid_dynamic_size(height):
     state = np.zeros((height, 5, 4))
 
     # place player
@@ -84,9 +84,9 @@ def init_grid_dynamic_size():
     state[height - 1, 2] = np.array([0, 1, 0, 0])
     # place fixed reward
     state[0, 0] = np.array([1, 0, 0, 0])
-    # place random rewards
-    place_rand_reward(state)
-    place_rand_reward(state)
+    # place stochastic rewards
+    state[0, 4] = np.array([2, 0, 0, 0])
+    state[2, 0] = np.array([2, 0, 0, 0])
 
     return state
 
@@ -141,7 +141,7 @@ def find_location(state, level):
         object_list = []
         for i in range(0, height):
             for j in range(0, 5):
-                if state[i, j][level] == 1:
+                if state[i, j][level] >= 1:
                     object_list.append((i, j))
         return object_list
     else:
@@ -156,11 +156,16 @@ def get_reward(state):
     pit = find_location(state, 1)
     reward = find_location(state, 0)
     if player_loc == pit:
-        return -10
+        return 0
     elif player_loc in reward:
-        return 10
+        if state[player_loc][0] == 1:
+            return 200
+        else:
+            bernoulli_list = bernoulli.rvs(0.5, size=100)*200
+            index = np.random.randint(0,100)
+            return bernoulli_list[index]
     else:
-        return -1
+        return 100
 
 
 def display_grid(state):
