@@ -12,9 +12,12 @@ from keras.optimizers import RMSprop
 from IPython.display import clear_output
 
 
-def model_init():
+def model_init(height):
+    input_size = height * 5 * 4
+    size_1 = height * 5 * 11
+    size_2 = height * 5 * 10
     nn = Sequential()
-    nn.add(Dense(164, kernel_initializer='lecun_uniform', input_shape=(60,)))
+    nn.add(Dense(164, kernel_initializer='lecun_uniform', input_shape=(input_size,)))
     nn.add(Activation('relu'))
 
     nn.add(Dense(150, kernel_initializer='lecun_uniform'))
@@ -23,8 +26,7 @@ def model_init():
     nn.add(Dense(4, kernel_initializer='lecun_uniform'))
     nn.add(Activation('linear'))
 
-    rms = RMSprop()
-    nn.compile(loss='mse', optimizer=rms)
+    nn.compile(loss='mse', optimizer=RMSprop())
     return nn
 
 
@@ -53,7 +55,7 @@ def training_easy(model):
             max_q = np.max(new_q)
             y = np.zeros((1, 4))
             y[:] = q_value[:]
-            if reward == -1:  # non-terminal state
+            if reward == 100:  # non-terminal state
                 update = (reward + (gamma * max_q))
             else:  # terminal state
                 update = reward
@@ -61,16 +63,16 @@ def training_easy(model):
             print("Game #: %s" % (i,))
             model.fit(state.reshape(1, 60), y, batch_size=1, epochs=1, verbose=1)
             state = new_state
-            if reward != -1:
+            if reward != 100:
                 status = 0
             clear_output(wait=True)
         if epsilon > 0.1:
             epsilon -= (1 / epochs)
 
 
-def training_hard(model, n):
-    epochs = n*1000
-    gamma = 0.975
+def training_hard(model, n, height):
+    epochs = n * 1000
+    gamma = 0.8
     epsilon = 1
     batch_size = 40
     buffer = 80
@@ -79,12 +81,13 @@ def training_hard(model, n):
     h = 0
     for i in range(epochs):
 
-        state = g.init_grid_dynamic_size()  # using the harder state initialization function
+        state = g.init_grid_dynamic_size(height)  # using the harder state initialization function
         status = 1
+        input_size = height * 5 * 4
         # while game still in progress
         while status == 1:
             # In state S, run Q function on S to get Q values for all possible actions
-            q_value = model.predict(state.reshape(1, 60), batch_size=1)
+            q_value = model.predict(state.reshape(1, input_size), batch_size=1)
             if random.random() < epsilon:  # choose random action
                 action = np.random.randint(0, 4)
             else:  # choose best action from Q(s,a) values
@@ -110,17 +113,17 @@ def training_hard(model, n):
                 for memory in mini_batch:
                     # Get max_Q(S',a)
                     old_state, action, reward, new_state = memory
-                    old_q_value = model.predict(old_state.reshape(1, 60), batch_size=1)
-                    new_q = model.predict(new_state.reshape(1, 60), batch_size=1)
+                    old_q_value = model.predict(old_state.reshape(1, input_size), batch_size=1)
+                    new_q = model.predict(new_state.reshape(1, input_size), batch_size=1)
                     max_q = np.max(new_q)
                     y = np.zeros((1, 4))
                     y[:] = old_q_value[:]
-                    if reward == -1:  # non-terminal state
+                    if reward == 100:  # non-terminal state
                         update = (reward + (gamma * max_q))
                     else:  # terminal state
                         update = reward
                     y[0][action] = update
-                    x_train.append(old_state.reshape(60, ))
+                    x_train.append(old_state.reshape(input_size, ))
                     y_train.append(y.reshape(4, ))
 
                 x_train = np.array(x_train)
@@ -128,14 +131,14 @@ def training_hard(model, n):
                 print("Game #: %s" % (i,))
                 model.fit(x_train, y_train, batch_size=batch_size, epochs=1, verbose=1)
                 state = new_state
-            if reward != -1:  # if reached terminal state, update game status
+            if reward != 100:  # if reached terminal state, update game status
                 status = 0
             clear_output(wait=True)
         if epsilon > 0.1:  # decrement epsilon over time
             epsilon -= (1 / epochs)
 
 
-def test_training(init=0):
+def test_training(init=0, height=0):
     i = 0
     if init == 0:
         state = g.init_grid()
@@ -144,21 +147,23 @@ def test_training(init=0):
     elif init == 2:
         state = g.init_grid_rand()
     elif init == 3:
-        state = g.init_grid_dynamic_size()
+        state = g.init_grid_dynamic_size(height)
 
     print("Initial State:")
     print(g.display_grid(state))
+    height = len(state)
+    input_size = height * 5 * 4
     status = 1
     # while game still in progress
     while status == 1:
-        q_value = model.predict(state.reshape(1, 60), batch_size=1)
+        q_value = model.predict(state.reshape(1, input_size), batch_size=1)
         # take action with highest Q-value
         action = (np.argmax(q_value))
         print('Move #: %s; Taking action: %s' % (i, action))
         state = g.make_move(state, action)
         print(g.display_grid(state))
         reward = g.get_reward(state)
-        if reward != -1:
+        if reward != 100:
             status = 0
             print("Reward: %s" % (reward,))
         i += 1
@@ -169,17 +174,19 @@ def test_training(init=0):
 
 
 if __name__ == "__main__":
-    model = model_init()
+    height = input("Enter the height of the grid: ")
+    height = int(height)
+    model = model_init(height)
     count = 0
     while True:
         n = input("Enter the number of epochs to train (in thousands): ")
         n = int(n)
         count += n
-        training_hard(model, n)
-        print("Model was trained for {} epochs in total".format(count*1000))
+        training_hard(model, n, height)
+        print("Model was trained for {} epochs in total".format(count * 1000))
         input("Press Enter to test model...")
         while True:
-            test_training(3)
+            test_training(3, height)
             response = input("Press Enter to test model or Q to "
                              "finish testing...")
             if response.lower() == 'q':
