@@ -158,7 +158,7 @@ def get_reward(state):
     if player_loc == pit:
         return 0
     elif player_loc in reward:
-        if state[player_loc][0] == 1:
+        if player_loc[0] == 0 and player_loc[1] == 0:
             return 200
         else:
             bernoulli_list = bernoulli.rvs(0.5, size=100)*200
