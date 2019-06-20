@@ -85,8 +85,8 @@ def init_grid_dynamic_size(height):
     # place fixed reward
     state[0, 0] = np.array([1, 0, 0, 0])
     # place stochastic rewards
-    state[0, 4] = np.array([2, 0, 0, 0])
-    state[2, 0] = np.array([2, 0, 0, 0])
+    state[0, 4] = np.array([1, 0, 0, 0])
+    state[height - 1, 0] = np.array([1, 0, 0, 0])
 
     return state
 
@@ -141,7 +141,7 @@ def find_location(state, level):
         object_list = []
         for i in range(0, height):
             for j in range(0, 5):
-                if state[i, j][level] >= 1:
+                if state[i, j][level] == 1:
                     object_list.append((i, j))
         return object_list
     else:
@@ -156,16 +156,16 @@ def get_reward(state):
     pit = find_location(state, 1)
     reward = find_location(state, 0)
     if player_loc == pit:
-        return 0
+        return -10
     elif player_loc in reward:
         if player_loc[0] == 0 and player_loc[1] == 0:
-            return 200
+            return 10
         else:
-            bernoulli_list = bernoulli.rvs(0.5, size=100)*200
-            index = np.random.randint(0,100)
-            return bernoulli_list[index]
+            bernoulli_list = bernoulli.rvs(0.5, size=10) * 20
+            index = np.random.randint(0, 10)
+            return bernoulli_list[index] - 10
     else:
-        return 100
+        return -1
 
 
 def display_grid(state):

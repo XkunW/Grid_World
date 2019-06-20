@@ -32,11 +32,11 @@ def model_init(height):
 
 def training_easy(model):
     epochs = 1000
-    gamma = 0.9  # since it may take several moves to goal, making gamma high
+    gamma = 0.8  # since it may take several moves to goal, making gamma high
     epsilon = 1
     for i in range(epochs):
 
-        state = g.init_grid()
+        state = g.init_grid_dynamic_size(3)
         status = 1
         # while game still in progress
         while status == 1:
@@ -55,7 +55,7 @@ def training_easy(model):
             max_q = np.max(new_q)
             y = np.zeros((1, 4))
             y[:] = q_value[:]
-            if reward == 100:  # non-terminal state
+            if reward == 0:  # non-terminal state
                 update = (reward + (gamma * max_q))
             else:  # terminal state
                 update = reward
@@ -63,7 +63,7 @@ def training_easy(model):
             print("Game #: %s" % (i,))
             model.fit(state.reshape(1, 60), y, batch_size=1, epochs=1, verbose=1)
             state = new_state
-            if reward != 100:
+            if reward != 0:
                 status = 0
             clear_output(wait=True)
         if epsilon > 0.1:
@@ -118,7 +118,7 @@ def training_hard(model, n, height):
                     max_q = np.max(new_q)
                     y = np.zeros((1, 4))
                     y[:] = old_q_value[:]
-                    if reward == 100:  # non-terminal state
+                    if reward == -1:  # non-terminal state
                         update = (reward + (gamma * max_q))
                     else:  # terminal state
                         update = reward
@@ -131,7 +131,7 @@ def training_hard(model, n, height):
                 print("Game #: %s" % (i,))
                 model.fit(x_train, y_train, batch_size=batch_size, epochs=1, verbose=1)
                 state = new_state
-            if reward != 100:  # if reached terminal state, update game status
+            if reward != -1:  # if reached terminal state, update game status
                 status = 0
             clear_output(wait=True)
         if epsilon > 0.1:  # decrement epsilon over time
@@ -163,12 +163,12 @@ def test_training(init=0, height=0):
         state = g.make_move(state, action)
         print(g.display_grid(state))
         reward = g.get_reward(state)
-        if reward != 100:
+        if reward != -1:
             status = 0
             print("Reward: %s" % (reward,))
         i += 1
         # If we're taking more than 10 actions, just stop, we probably can't win this game
-        if i > 10:
+        if i > height * 2 + 4:
             print("Game lost; too many moves.")
             break
 
@@ -183,6 +183,7 @@ if __name__ == "__main__":
         n = int(n)
         count += n
         training_hard(model, n, height)
+        # training_easy(model)
         print("Model was trained for {} epochs in total".format(count * 1000))
         input("Press Enter to test model...")
         while True:
