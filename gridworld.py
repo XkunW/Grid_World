@@ -5,6 +5,17 @@ import numpy as np
 from scipy.stats import bernoulli
 
 
+def action_map(action):
+    mapping = {
+        (-1, 0): 0,
+        (1, 0): 1,
+        (0, -1): 2,
+        (0, 1): 3,
+        (0, 0): 4
+    }
+    return mapping[action]
+
+
 def rand_pair(h, w):
     return np.random.randint(0, h), np.random.randint(0, w)
 
@@ -91,6 +102,50 @@ def init_grid_dynamic_size(height):
     return state
 
 
+def check_optimal_policy(height, location, action):
+    # 0 = up, 1 = down, 2 = left, 3 = right.
+    optimal = {}
+
+    for i in range(height):
+        for j in range(5):
+            optimal[(i, j)] = [4]
+
+    for i in range(1, height - 1):
+        optimal[(i, 0)] = [0]
+        optimal[(i, 1)] = [2, 0]
+        optimal[(i + 1, 4)] = [2, 0]
+
+    for j in range(1, 4):
+        optimal[(0, j)] = [2]
+
+    for i in range(1, height):
+        optimal[(i, 3)] = [0]
+
+    optimal[(height - 1, 1)] = [0]
+    optimal[(1, 4)] = [2]
+    """
+    grid = np.zeros((height, 5), dtype=str)
+    for i in range(height):
+        for j in range(5):
+            action = ''
+            for a in optimal[(i, j)]:
+                action += a
+            grid[i, j] = action
+    print(grid)
+    """
+    """
+    if type(action) == int:
+        action_index = action
+    else:
+        action_index = action_map(action)
+    if action_index in optimal[location]:
+    """
+    if action in optimal[location]:
+        return 1
+    else:
+        return 0
+
+
 def place_rand_reward(state):
     height = len(state)
     a = find_location(state, 3)  # find grid position of player (agent)
@@ -139,14 +194,14 @@ def find_location(state, level):
     height = len(state)
     if level == 0 or level == 2:
         object_list = []
-        for i in range(0, height):
-            for j in range(0, 5):
+        for i in range(height):
+            for j in range(5):
                 if state[i, j][level] == 1:
                     object_list.append((i, j))
         return object_list
     else:
-        for i in range(0, height):
-            for j in range(0, 5):
+        for i in range(height):
+            for j in range(5):
                 if state[i, j][level] == 1:
                     return i, j
 
@@ -175,8 +230,8 @@ def display_grid(state):
     wall = find_location(state, 2)
     reward = find_location(state, 0)
     pit = find_location(state, 1)
-    for i in range(0, height):
-        for j in range(0, 5):
+    for i in range(height):
+        for j in range(5):
             grid[i, j] = ' '
 
     if player_loc:
