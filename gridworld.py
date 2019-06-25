@@ -123,17 +123,17 @@ def check_optimal_policy(height, location, action):
 
     optimal[(height - 1, 1)] = [0]
     optimal[(1, 4)] = [2]
+    print("{} -- {}".format(optimal[location], action))
+
     """
-    grid = np.zeros((height, 5), dtype=str)
     for i in range(height):
+        row = []
         for j in range(5):
-            action = ''
-            for a in optimal[(i, j)]:
-                action += a
-            grid[i, j] = action
-    print(grid)
-    """
-    """
+            row.append(optimal[(i, j)])
+        print(row)
+
+
+    
     if type(action) == int:
         action_index = action
     else:
@@ -144,6 +144,17 @@ def check_optimal_policy(height, location, action):
         return 1
     else:
         return 0
+
+
+def place_player(state, new_loc):
+    curr_loc = find_location(state, 3)
+    state[curr_loc][3] = 0
+    state[new_loc][3] = 1
+    return state
+
+
+def check_availability(state, loc):
+    return state[loc][0] or state[loc][1] or state[loc][2]
 
 
 def place_rand_reward(state):

@@ -5,6 +5,9 @@ The Q function is built as a neural network based on the keras Sequential API ru
 import gridworld as g
 import numpy as np
 import random
+import matplotlib.pyplot as plt
+import time as t
+import json
 
 from keras.models import Sequential
 from keras.layers.core import Dense, Dropout, Activation
@@ -31,10 +34,10 @@ def model_init(height):
 
 
 def training_easy(model):
-    epochs = 1000
+    episodes = 1000
     gamma = 0.8  # since it may take several moves to goal, making gamma high
     epsilon = 1
-    for i in range(epochs):
+    for i in range(episodes):
 
         state = g.init_grid_dynamic_size(3)
         status = 1
@@ -67,11 +70,11 @@ def training_easy(model):
                 status = 0
             clear_output(wait=True)
         if epsilon > 0.1:
-            epsilon -= (1 / epochs)
+            epsilon -= (1 / episodes)
 
 
 def training_hard(model, n, height):
-    epochs = n * 1000
+    episodes = n * 1000
     gamma = 0.8
     epsilon = 1
     batch_size = 40
@@ -79,7 +82,9 @@ def training_hard(model, n, height):
     replay = []
     # stores tuples of (S, A, R, S')
     h = 0
-    for i in range(epochs):
+    fidelity = {}
+    start = t.time()
+    for i in range(episodes):
 
         state = g.init_grid_dynamic_size(height)  # using the harder state initialization function
         status = 1
@@ -96,7 +101,6 @@ def training_hard(model, n, height):
             new_state = g.make_move(state, action)
             # Observe reward
             reward = g.get_reward(new_state)
-
             # Experience replay storage
             if len(replay) < buffer:  # if buffer not filled, add to it
                 replay.append((state, action, reward, new_state))
@@ -135,7 +139,29 @@ def training_hard(model, n, height):
                 status = 0
             clear_output(wait=True)
         if epsilon > 0.1:  # decrement epsilon over time
-            epsilon -= (1 / epochs)
+            epsilon -= (1 / episodes)
+        if i % 10 == 0:
+            fidelity[i] = get_fidelity(height, model)
+    end = t.time()
+    interval = {"Time Elapsed":  format(end - start, '.3f')}
+    data = [interval, fidelity]
+    return data
+
+
+def get_fidelity(height, model):
+    input_size = height * 5 * 4
+    state = g.init_grid_dynamic_size(height)
+    count = height * 5 - 4 - (height - 2)
+    fidelity = 0
+    for i in range(height):
+        for j in range(5):
+            if g.check_availability(state, (i, j)) == 0:
+                state = g.place_player(state, (i, j))
+                q_value = model.predict(state.reshape(1, input_size), batch_size=1)
+                action = (np.argmax(q_value))
+                fidelity += g.check_optimal_policy(height, (i, j), action)
+    print(fidelity / count)
+    return fidelity / count
 
 
 def test_training(init=0, height=0):
@@ -176,15 +202,16 @@ def test_training(init=0, height=0):
 if __name__ == "__main__":
     height = input("Enter the height of the grid: ")
     height = int(height)
+    """
     model = model_init(height)
     count = 0
     while True:
-        n = input("Enter the number of epochs to train (in thousands): ")
+        n = input("Enter the number of episodes to train (in thousands): ")
         n = int(n)
         count += n
         training_hard(model, n, height)
         # training_easy(model)
-        print("Model was trained for {} epochs in total".format(count * 1000))
+        print("Model was trained for {} episodes in total".format(count * 1000))
         input("Press Enter to test model...")
         while True:
             test_training(3, height)
@@ -195,3 +222,22 @@ if __name__ == "__main__":
         response = input("Press Q to abort or else to continue training: ")
         if response.lower() == 'q':
             break
+    """
+    fidelity = []
+    for index in range(10):
+        model = model_init(height)
+        f = training_hard(model, 5, height)
+        fidelity.append(f)
+        plt.plot(list(f[1].keys()), list(f[1].values()), label = "Agent {}".format(index + 1))
+        print("Model was trained for 5000 episodes in total")
+
+    plt.title("Fidelity plot on {}x5 gird".format(height))
+    plt.xlabel("Episodes")
+    plt.ylabel("Fidelity")
+    plt.legend(loc='best')
+    plt.show()
+
+    # fidelity = json.dump(fidelity)
+    with open('data.json', 'w') as json_file:
+        json.dump(fidelity, json_file)
+
