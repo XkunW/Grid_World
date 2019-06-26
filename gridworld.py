@@ -123,7 +123,7 @@ def check_optimal_policy(height, location, action):
 
     optimal[(height - 1, 1)] = [0]
     optimal[(1, 4)] = [2]
-    print("{} -- {}".format(optimal[location], action))
+    # print("{} -- {}".format(optimal[location], action))
 
     """
     for i in range(height):

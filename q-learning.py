@@ -83,6 +83,7 @@ def training_hard(model, n, height):
     # stores tuples of (S, A, R, S')
     h = 0
     fidelity = {}
+    all = {}
     start = t.time()
     for i in range(episodes):
 
@@ -140,11 +141,13 @@ def training_hard(model, n, height):
             clear_output(wait=True)
         if epsilon > 0.1:  # decrement epsilon over time
             epsilon -= (1 / episodes)
-        if i % 10 == 0:
+        all[i] = get_fidelity(height, model)
+        if i % 100 == 0:
             fidelity[i] = get_fidelity(height, model)
     end = t.time()
     interval = {"Time Elapsed":  format(end - start, '.3f')}
-    data = [interval, fidelity]
+    all = [interval, all]
+    data = [all, fidelity]
     return data
 
 
@@ -227,8 +230,8 @@ if __name__ == "__main__":
     for index in range(10):
         model = model_init(height)
         f = training_hard(model, 5, height)
-        fidelity.append(f)
-        plt.plot(list(f[1].keys()), list(f[1].values()), label = "Agent {}".format(index + 1))
+        fidelity.append(f[0])
+        plt.plot(list(f[1].keys()), list(f[1].values()), label="Agent {}".format(index + 1))
         print("Model was trained for 5000 episodes in total")
 
     plt.title("Fidelity plot on {}x5 gird".format(height))
