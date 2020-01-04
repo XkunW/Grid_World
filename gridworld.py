@@ -1,19 +1,131 @@
-"""
-This file contains all the functions related to the grid world game
-"""
 import numpy as np
 from scipy.stats import bernoulli
 
 
-def action_map(action):
-    mapping = {
-        (-1, 0): 0,
-        (1, 0): 1,
-        (0, -1): 2,
-        (0, 1): 3,
-        (0, 0): 4
+class GridWorld(object):
+    actions = {
+        0: (-1, 0),  # up
+        1: (1, 0),  # down
+        2: (0, -1),  # left
+        3: (0, 1),  # right
+        4: (0, 0)  # stay
     }
-    return mapping[action]
+
+    def __init__(self, height=3, random_reward=False, reward=[0, -1, 2]):
+        self.height = height
+        self.random_reward = random_reward
+        self.state = np.zeros((height, 5, 4))
+        self.step = reward[0]
+        self.penalty = reward[1]
+        self.reward = reward[2]
+        self.optimal_policy = {}
+        self.init_grid()
+        self.init_optimal_policy()
+
+    def init_grid(self):
+        # place player
+        self.state[self.height - 1, 4] = np.array([0, 0, 0, 1])
+        # place walls
+        for i in range(1, self.height - 1):
+            self.state[i, 2] = np.array([0, 0, 1, 0])
+        # place pit
+        self.state[self.height - 1, 2] = np.array([0, 1, 0, 0])
+        # place fixed reward
+        self.state[0, 0] = np.array([1, 0, 0, 0])
+        # place stochastic rewards if applicable
+        if self.random_reward:
+            self.state[0, 4] = np.array([1, 0, 0, 0])
+            self.state[self.height - 1, 0] = np.array([1, 0, 0, 0])
+
+    def init_optimal_policy(self):
+        # 0 = up, 1 = down, 2 = left, 3 = right.
+        for i in range(self.height):
+            for j in range(5):
+                self.optimal_policy[(i, j)] = [4]
+
+        for i in range(1, self.height - 1):
+            self.optimal_policy[(i, 0)] = [0]
+            self.optimal_policy[(i, 1)] = [2, 0]
+            self.optimal_policy[(i + 1, 4)] = [2, 0]
+
+        for j in range(1, 4):
+            self.optimal_policy[(0, j)] = [2]
+
+        for i in range(1, self.height):
+            self.optimal_policy[(i, 3)] = [0]
+
+        self.optimal_policy[(self.height - 1, 1)] = [0]
+        self.optimal_policy[(1, 4)] = [2]
+
+    def find_location(self, level):
+        for i in range(self.height):
+            for j in range(5):
+                if self.state[i, j][level] == 1:
+                    return i, j
+
+    def display_grid(self):
+        grid = np.zeros((self.height, 5), dtype=str)
+        player_loc = find_location(self.state, 3)
+        wall = find_location(self.state, 2)
+        reward = find_location(self.state, 0)
+        pit = find_location(self.state, 1)
+        for i in range(self.height):
+            for j in range(5):
+                grid[i, j] = ' '
+
+        if player_loc:
+            grid[player_loc] = 'P'  # player
+        for w in wall:
+            if w:
+                grid[w] = 'W'  # wall
+        for r in reward:
+            if r:
+                if player_loc != r:
+                    grid[r] = '+'  # reward
+                else:
+                    grid[r] = 'V'  # Win!
+        if pit:
+            if player_loc != pit:
+                grid[pit] = '-'  # pit
+            else:
+                grid[pit] = 'L'  # Lose!
+
+        return grid
+
+    def check_optimal_policy(self, location, action):
+        return action in self.optimal_policy[location]
+
+    def get_reward(self):
+        player_loc = find_location(self.state, 3)
+        pit = find_location(self.state, 1)
+        reward = find_location(self.state, 0)
+        if player_loc == pit:
+            return self.penalty
+        elif player_loc in reward:
+            """
+            # The following snippet is for stochastic reward, currently not used
+            if player_loc[0] == 0 and player_loc[1] == 0:
+                return 2 
+            else:
+                bernoulli_list = bernoulli.rvs(0.5, size=10) * 20
+                index = np.random.randint(0, 10)
+                return bernoulli_list[index] - 10
+            """
+            return self.reward
+        else:
+            return self.step
+
+    def make_move(self, action):
+        # need to locate player in grid
+        # need to determine what object (if any) is in the new grid spot the player is moving to
+        player_loc = find_location(self.state, 3)
+        wall = find_location(self.state, 2)
+        # e.g. up => (player row - 1, player column + 0)
+        new_loc = (player_loc[0] + self.actions[action][0], player_loc[1] + self.actions[action][1])
+        if new_loc not in wall:
+            if (np.array(new_loc) <= (self.height - 1, 4)).all() and (np.array(new_loc) >= (0, 0)).all():
+                self.state[player_loc][3] = 0
+                self.state[new_loc][3] = 1
 
 
 def rand_pair(h, w):
@@ -96,54 +208,10 @@ def init_grid_dynamic_size(height):
     # place fixed reward
     state[0, 0] = np.array([1, 0, 0, 0])
     # place stochastic rewards
-    state[0, 4] = np.array([1, 0, 0, 0])
-    state[height - 1, 0] = np.array([1, 0, 0, 0])
+    # state[0, 4] = np.array([1, 0, 0, 0])
+    # state[height - 1, 0] = np.array([1, 0, 0, 0])
 
     return state
-
-
-def check_optimal_policy(height, location, action):
-    # 0 = up, 1 = down, 2 = left, 3 = right.
-    optimal = {}
-
-    for i in range(height):
-        for j in range(5):
-            optimal[(i, j)] = [4]
-
-    for i in range(1, height - 1):
-        optimal[(i, 0)] = [0]
-        optimal[(i, 1)] = [2, 0]
-        optimal[(i + 1, 4)] = [2, 0]
-
-    for j in range(1, 4):
-        optimal[(0, j)] = [2]
-
-    for i in range(1, height):
-        optimal[(i, 3)] = [0]
-
-    optimal[(height - 1, 1)] = [0]
-    optimal[(1, 4)] = [2]
-    # print("{} -- {}".format(optimal[location], action))
-
-    """
-    for i in range(height):
-        row = []
-        for j in range(5):
-            row.append(optimal[(i, j)])
-        print(row)
-
-
-    
-    if type(action) == int:
-        action_index = action
-    else:
-        action_index = action_map(action)
-    if action_index in optimal[location]:
-    """
-    if action in optimal[location]:
-        return 1
-    else:
-        return 0
 
 
 def place_player(state, new_loc):
@@ -169,38 +237,6 @@ def place_rand_reward(state):
     state[pair[0], pair[1]] = np.array([1, 0, 0, 0])
 
 
-def make_move(state, action):
-    # need to locate player in grid
-    # need to determine what object (if any) is in the new grid spot the player is moving to
-    height = len(state)
-
-    player_loc = find_location(state, 3)
-    wall = find_location(state, 2)
-    reward = find_location(state, 0)
-    pit = find_location(state, 1)
-    state = np.zeros((height, 5, 4))
-    actions = [[-1, 0], [1, 0], [0, -1], [0, 1]]
-    # e.g. up => (player row - 1, player column + 0)
-    new_loc = (player_loc[0] + actions[action][0], player_loc[1] + actions[action][1])
-    if new_loc not in wall:
-        if (np.array(new_loc) <= (height - 1, 4)).all() and (np.array(new_loc) >= (0, 0)).all():
-            state[new_loc][3] = 1
-
-    new_player_loc = find_location(state, 3)
-    if not new_player_loc:
-        state[player_loc] = np.array([0, 0, 0, 1])
-    # re-place pit
-    state[pit][1] = 1
-    # re-place wall
-    for w in wall:
-        state[w][2] = 1
-    # re-place reward
-    for r in reward:
-        state[r][0] = 1
-
-    return state
-
-
 def find_location(state, level):
     height = len(state)
     if level == 0 or level == 2:
@@ -215,51 +251,3 @@ def find_location(state, level):
             for j in range(5):
                 if state[i, j][level] == 1:
                     return i, j
-
-
-def get_reward(state):
-    player_loc = find_location(state, 3)
-    pit = find_location(state, 1)
-    reward = find_location(state, 0)
-    if player_loc == pit:
-        return -10
-    elif player_loc in reward:
-        if player_loc[0] == 0 and player_loc[1] == 0:
-            return 10
-        else:
-            bernoulli_list = bernoulli.rvs(0.5, size=10) * 20
-            index = np.random.randint(0, 10)
-            return bernoulli_list[index] - 10
-    else:
-        return -1
-
-
-def display_grid(state):
-    height = len(state)
-    grid = np.zeros((height, 5), dtype=str)
-    player_loc = find_location(state, 3)
-    wall = find_location(state, 2)
-    reward = find_location(state, 0)
-    pit = find_location(state, 1)
-    for i in range(height):
-        for j in range(5):
-            grid[i, j] = ' '
-
-    if player_loc:
-        grid[player_loc] = 'P'  # player
-    for w in wall:
-        if w:
-            grid[w] = 'W'  # wall
-    for r in reward:
-        if r:
-            if player_loc != r:
-                grid[r] = '+'  # reward
-            else:
-                grid[r] = 'V'  # Win!
-    if pit:
-        if player_loc != pit:
-            grid[pit] = '-'  # pit
-        else:
-            grid[pit] = 'L'  # Lose!
-
-    return grid
