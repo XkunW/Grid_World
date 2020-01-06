@@ -11,7 +11,9 @@ class GridWorld(object):
         4: (0, 0)  # stay
     }
 
-    def __init__(self, height=3, random_reward=False, reward=[0, -1, 2]):
+    def __init__(self, height=3, random_reward=False, reward=None):
+        if reward is None:
+            reward = [-1, -10, 10]
         self.height = height
         self.random_reward = random_reward
         self.state = np.zeros((height, 5, 4))
@@ -38,37 +40,54 @@ class GridWorld(object):
             self.state[self.height - 1, 0] = np.array([1, 0, 0, 0])
 
     def init_optimal_policy(self):
-        # 0 = up, 1 = down, 2 = left, 3 = right.
+        # 0 = up, 1 = down, 2 = left, 3 = right, 4 = stay.
         for i in range(self.height):
             for j in range(5):
                 self.optimal_policy[(i, j)] = [4]
 
-        for i in range(1, self.height - 1):
-            self.optimal_policy[(i, 0)] = [0]
-            self.optimal_policy[(i, 1)] = [2, 0]
-            self.optimal_policy[(i + 1, 4)] = [2, 0]
+        # Moving up or left at reward would be the same as stay
+        self.optimal_policy[(0, 0)] = [4, 2, 0]
 
-        for j in range(1, 4):
+        # First row
+        for j in range(1, 5):
             self.optimal_policy[(0, j)] = [2]
 
-        for i in range(1, self.height):
+        # Last row
+        for j in range(5):
+            if j == 2:
+                self.optimal_policy[(self.height - 1, j)] = [2]
+            elif j == 4:
+                self.optimal_policy[(self.height - 1, j)] = [2, 0]
+            else:
+                self.optimal_policy[(self.height - 1, j)] = [0]
+
+        # Rows in between
+        for i in range(1, self.height - 1):
+            self.optimal_policy[(i, 1)] = [2, 0]
+            self.optimal_policy[(i, 4)] = [2, 0]
+            self.optimal_policy[(i, 0)] = [0]
             self.optimal_policy[(i, 3)] = [0]
 
-        self.optimal_policy[(self.height - 1, 1)] = [0]
-        self.optimal_policy[(1, 4)] = [2]
-
     def find_location(self, level):
-        for i in range(self.height):
-            for j in range(5):
-                if self.state[i, j][level] == 1:
-                    return i, j
+        if level == 0 or level == 2:
+            object_list = []
+            for i in range(self.height):
+                for j in range(5):
+                    if self.state[i, j][level] == 1:
+                        object_list.append((i, j))
+            return object_list
+        else:
+            for i in range(self.height):
+                for j in range(5):
+                    if self.state[i, j][level] == 1:
+                        return i, j
 
     def display_grid(self):
         grid = np.zeros((self.height, 5), dtype=str)
-        player_loc = find_location(self.state, 3)
-        wall = find_location(self.state, 2)
-        reward = find_location(self.state, 0)
-        pit = find_location(self.state, 1)
+        player_loc = self.find_location(3)
+        wall = self.find_location(2)
+        reward = self.find_location(0)
+        pit = self.find_location(1)
         for i in range(self.height):
             for j in range(5):
                 grid[i, j] = ' '
@@ -76,8 +95,7 @@ class GridWorld(object):
         if player_loc:
             grid[player_loc] = 'P'  # player
         for w in wall:
-            if w:
-                grid[w] = 'W'  # wall
+            grid[w] = 'W'  # wall
         for r in reward:
             if r:
                 if player_loc != r:
@@ -89,16 +107,15 @@ class GridWorld(object):
                 grid[pit] = '-'  # pit
             else:
                 grid[pit] = 'L'  # Lose!
-
-        return grid
+        print(grid)
 
     def check_optimal_policy(self, location, action):
         return action in self.optimal_policy[location]
 
     def get_reward(self):
-        player_loc = find_location(self.state, 3)
-        pit = find_location(self.state, 1)
-        reward = find_location(self.state, 0)
+        player_loc = self.find_location(3)
+        pit = self.find_location(1)
+        reward = self.find_location(0)
         if player_loc == pit:
             return self.penalty
         elif player_loc in reward:
@@ -115,7 +132,7 @@ class GridWorld(object):
         else:
             return self.step
 
-    def make_move(self, action):
+    def agent_move(self, action):
         # need to locate player in grid
         # need to determine what object (if any) is in the new grid spot the player is moving to
         player_loc = find_location(self.state, 3)
@@ -126,6 +143,11 @@ class GridWorld(object):
             if (np.array(new_loc) <= (self.height - 1, 4)).all() and (np.array(new_loc) >= (0, 0)).all():
                 self.state[player_loc][3] = 0
                 self.state[new_loc][3] = 1
+
+    def place_player(self, new_loc):
+        curr_loc = self.find_location(3)
+        self.state[curr_loc][3] = 0
+        self.state[new_loc][3] = 1
 
 
 def rand_pair(h, w):
@@ -211,13 +233,6 @@ def init_grid_dynamic_size(height):
     # state[0, 4] = np.array([1, 0, 0, 0])
     # state[height - 1, 0] = np.array([1, 0, 0, 0])
 
-    return state
-
-
-def place_player(state, new_loc):
-    curr_loc = find_location(state, 3)
-    state[curr_loc][3] = 0
-    state[new_loc][3] = 1
     return state
 
 
