@@ -28,6 +28,9 @@ def model_init(height):
     nn.add(Activation('relu'))
     # nn.add(Dropout(0.2))
 
+    nn.add(Dense(100, kernel_initializer='lecun_uniform'))
+    nn.add(Activation('relu'))
+
     nn.add(Dense(5, kernel_initializer='lecun_uniform'))
     nn.add(Activation('linear'))
 
@@ -37,7 +40,7 @@ def model_init(height):
 
 def training_easy(grid, model, n, height, num_of_steps):
     episodes = n * 1000
-    gamma = 0.9
+    gamma = 0.8
     epsilon = 1
     input_size = height * 5 * 4
     indices = []
@@ -71,6 +74,67 @@ def training_easy(grid, model, n, height, num_of_steps):
         if epsilon > 0.1:
             epsilon -= (1 / episodes)
     return indices, fidelities
+
+
+def training_hard(grid, model, n, height, num_of_steps):
+    episodes = n * 1000
+    gamma = 0.8
+    epsilon = 1
+    input_size = height * 5 * 4
+    batch_size = 40
+    buffer = 80
+    replay = []
+    h = 0
+    indices = []
+    fidelities = []
+    for i in range(episodes):
+        for j in range(num_of_steps):
+            # In state S, run Q function on S to get Q values for all possible actions
+            pre_state = grid.state
+            q_value = model.predict(pre_state.reshape(1, input_size), batch_size=1)
+            if np.random.uniform(0, 1) < epsilon:  # choose random action
+                action = np.random.randint(0, 5)
+            else:  # choose best action from Q(s,a) values
+                action = (np.argmax(q_value))
+            # Take action, observe new state S'
+            grid.agent_move(action)
+            new_state = grid.state
+            # Observe reward
+            reward = grid.get_reward()
+            # Fill buffer is not full
+            if len(replay) < buffer:
+                replay.append((pre_state, action, reward, new_state))
+            else:  # Replace with new experience if full
+                if h < buffer - 1:
+                    h += 1
+                else:
+                    h = 0
+                replay[h] = (pre_state, action, reward, new_state)
+                mini_batch = random.sample(replay, batch_size)
+                x_train = []
+                y_train = []
+                for memory in mini_batch:
+                    pre_state, action, reward, new_state = memory
+                    pre_q_ = model.predict(pre_state.reshape(1, input_size), batch_size=1)
+                    new_q = model.predict(new_state.reshape(1, input_size), batch_size=1)
+                    max_q = np.max(new_q)
+                    y = np.zeros((1, 5))
+                    y[:] = pre_q_[:]
+                    update = reward + (gamma * max_q)
+                    y[0][action] = update  # target output
+                    x_train.append(pre_state.reshape(input_size, ))
+                    y_train.append(y.reshape(5, ))
+                x_train = np.array(x_train)
+                y_train = np.array(y_train)
+                print("Game #: %s" % (i,))
+                model.fit(x_train, y_train, batch_size=batch_size, epochs=1, verbose=1)
+            clear_output(wait=True)
+        if epsilon > 0.1:
+            epsilon -= (1 / episodes)
+        indices.append(i)
+        fidelities.append(get_fidelity(height, model))
+    return indices, fidelities
+
 
 
 def get_fidelity(height, model):
@@ -117,10 +181,10 @@ if __name__ == "__main__":
         height = 3
         env = g.GridWorld()
 
-    num_of_steps = 10
+    num_of_steps = 14
     for index in range(5):
         model = model_init(height)
-        f = training_easy(env, model, 1, height, num_of_steps)
+        f = training_easy(env, model, 3, height, num_of_steps)
         test_training(model)
         plt.plot(f[0], f[1])
         plt.show()
